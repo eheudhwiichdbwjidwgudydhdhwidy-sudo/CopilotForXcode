@@ -1,0 +1,60 @@
+-- Optimize Graphics for Maximum FPS
+local Lighting = game:GetService("Lighting")
+local Workspace = game:GetService("Workspace")
+local RunService = game:GetService("RunService")
+
+-- 1. Remove all effects
+Lighting.GlobalShadows = false
+Lighting.FogEnd = 999999
+Lighting.Brightness = 1
+Lighting.OutdoorAmbient = Color3.fromRGB(255, 255, 255)
+Lighting.ClockTime = 12
+Lighting.TimeOfDay = "12:00:00"
+Lighting.ExposureCompensation = 0
+Lighting.Ambient = Color3.fromRGB(255, 255, 255)
+Lighting.ColorShift_Bottom = Color3.fromRGB(255, 255, 255)
+Lighting.ColorShift_Top = Color3.fromRGB(255, 255, 255)
+Lighting:ClearAllChildren() -- ลบเอฟเฟกต์ทั้งหมด
+
+-- 2. Remove all weather/atmosphere
+for _, v in pairs(Lighting:GetChildren()) do
+    if v:IsA("Atmosphere") or v:IsA("Sky") then
+        v:Destroy()
+    end
+end
+
+-- 3. Change all parts to white clay (plastic) and remove details
+for _, obj in pairs(Workspace:GetDescendants()) do
+    if obj:IsA("BasePart") then
+        obj.Material = Enum.Material.SmoothPlastic
+        obj.Color = Color3.fromRGB(255, 255, 255)
+        obj.Reflectance = 0
+        obj.Transparency = 0
+        obj.Anchored = true
+    end
+end
+
+-- 4. Remove buildings partially (for example, remove all models named "House")
+for _, model in pairs(Workspace:GetChildren()) do
+    if model:IsA("Model") and model.Name:lower():find("house") then
+        model:Destroy()
+    end
+end
+
+-- 5. Optional: Remove particles, decals, meshes
+for _, obj in pairs(Workspace:GetDescendants()) do
+    if obj:IsA("ParticleEmitter") or obj:IsA("Decal") or obj:IsA("SpecialMesh") then
+        obj:Destroy()
+    end
+end
+
+-- 6. RunService to force FPS optimization
+RunService.RenderStepped:Connect(function()
+    for _, part in pairs(Workspace:GetDescendants()) do
+        if part:IsA("BasePart") then
+            part.CastShadow = false
+        end
+    end
+end)
+
+print("Graphics optimized: White clay, weather removed, houses partially removed, effects cleared.")
