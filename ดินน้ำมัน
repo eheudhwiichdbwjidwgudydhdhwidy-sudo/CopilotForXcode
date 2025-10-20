@@ -1,0 +1,36 @@
+-- Maximize FPS by lowering graphics
+local Lighting = game:GetService("Lighting")
+Lighting.GlobalShadows = false
+Lighting.FogEnd = 9e9
+Lighting.Brightness = 1
+Lighting.ClockTime = 14
+Lighting.OutdoorAmbient = Color3.fromRGB(255,255,255)
+Lighting.ColorShift_Bottom = Color3.fromRGB(255,255,255)
+Lighting.ColorShift_Top = Color3.fromRGB(255,255,255)
+Lighting.Ambient = Color3.fromRGB(255,255,255)
+
+-- Increase FPS
+for i,v in pairs(game:GetService("Players").LocalPlayer.PlayerScripts:GetChildren()) do
+    if v:IsA("LocalScript") then
+        v.Disabled = true
+    end
+end
+-- Lower rendering quality
+settings().Rendering.QualityLevel = "Level01"
+
+-- Delete all houses/models (keep only local player)
+for _, obj in pairs(workspace:GetDescendants()) do
+    if obj:IsA("Part") or obj:IsA("Model") then
+        if obj.Name ~= game.Players.LocalPlayer.Name then
+            obj:Destroy()
+        end
+    end
+end
+
+-- Turn all parts into white clay (SmoothPlastic)
+for _, obj in pairs(workspace:GetDescendants()) do
+    if obj:IsA("BasePart") then
+        obj.Material = Enum.Material.SmoothPlastic
+        obj.Color = Color3.fromRGB(255,255,255)
+    end
+end
