@@ -1,0 +1,45 @@
+-- Lower graphics quality for maximum FPS
+local Lighting = game:GetService("Lighting")
+Lighting.GlobalShadows = false
+Lighting.FogEnd = 9e9
+Lighting.Brightness = 2
+Lighting.ClockTime = 14
+Lighting.OutdoorAmbient = Color3.new(1,1,1)
+Lighting.Ambient = Color3.new(1,1,1)
+
+-- Reduce rendering quality
+pcall(function()
+    settings().Rendering.QualityLevel = "Level01"
+end)
+
+-- Remove all houses/structures, keep only player characters
+for _, obj in pairs(workspace:GetChildren()) do
+    if obj:IsA("Model") or obj:IsA("Part") then
+        if not obj:FindFirstChildWhichIsA("Humanoid") then
+            obj:Destroy()
+        end
+    end
+end
+
+-- Keep only player heads
+for _, player in pairs(game.Players:GetPlayers()) do
+    if player.Character then
+        local char = player.Character
+        for _, part in pairs(char:GetChildren()) do
+            if part:IsA("BasePart") and part.Name ~= "Head" then
+                part.Transparency = 1
+                part.CanCollide = false
+            end
+        end
+        -- Optional: make the head more visible
+        if char:FindFirstChild("Head") then
+            char.Head.Size = Vector3.new(2,2,2)
+            char.Head.Transparency = 0
+        end
+    end
+end
+
+-- Optional: ensure smooth FPS with Delta Executor
+game:GetService("RunService").RenderStepped:Connect(function()
+    -- Delta executor handles high FPS automatically
+end)
