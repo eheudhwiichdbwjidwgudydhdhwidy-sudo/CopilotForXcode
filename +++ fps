@@ -1,0 +1,64 @@
+-- LocalScript (StarterPlayerScripts or StarterGui)
+local RunService = game:GetService("RunService")
+local Players = game:GetService("Players")
+local player = Players.LocalPlayer
+
+-- === Create GUI for FPS Display ===
+local screenGui = Instance.new("ScreenGui")
+screenGui.Name = "FPSGui"
+screenGui.ResetOnSpawn = false
+screenGui.Parent = player:WaitForChild("PlayerGui")
+
+local fpsLabel = Instance.new("TextLabel")
+fpsLabel.Name = "FPSLabel"
+fpsLabel.Size = UDim2.new(0, 120, 0, 30)
+fpsLabel.Position = UDim2.new(1, -130, 0, 10) -- Top-right corner
+fpsLabel.BackgroundTransparency = 0.5
+fpsLabel.BackgroundColor3 = Color3.new(0, 0, 0)
+fpsLabel.TextColor3 = Color3.new(1, 1, 1)
+fpsLabel.TextScaled = true
+fpsLabel.Font = Enum.Font.SourceSansBold
+fpsLabel.Parent = screenGui
+
+-- === Variables for FPS tracking ===
+local fps = 0
+local smoothing = 0.1 -- Smaller = faster response but more jumpy
+
+-- Get user's graphics quality setting (client-side only)
+local success, userGameSettings = pcall(function()
+	return UserSettings():GetService("UserGameSettings")
+end)
+
+local function getSavedQualityLevel()
+	if success and userGameSettings then
+		return userGameSettings.SavedQualityLevel
+	end
+	return nil
+end
+
+-- === Example: Smooth movement using delta (frame-rate independent) ===
+local function smoothMove(part, targetCFrame, secondsToTake)
+	spawn(function()
+		local elapsed = 0
+		local start = part.CFrame
+		while elapsed < secondsToTake do
+			local dt = RunService.Heartbeat:Wait()
+			elapsed = elapsed + dt
+			local alpha = math.min(elapsed / secondsToTake, 1)
+			part.CFrame = start:Lerp(targetCFrame, alpha)
+		end
+	end)
+end
+
+-- === FPS update loop ===
+RunService.Heartbeat:Connect(function(dt)
+	local instantFps = (dt > 0) and (1 / dt) or 0
+	fps = fps + (instantFps - fps) * smoothing
+
+	fpsLabel.Text = ("FPS: %d"):format(math.floor(fps + 0.5))
+
+	local q = getSavedQualityLevel()
+	if q then
+		-- You can use this to adjust effects or detail depending on quality level
+	end
+end)
