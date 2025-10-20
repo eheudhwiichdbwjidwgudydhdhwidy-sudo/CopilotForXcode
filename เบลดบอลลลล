@@ -1,0 +1,279 @@
+-- LocalScript (put in StarterPlayerScripts)
+-- SAFE: client-side visuals only. Does NOT call any server RemoteEvent.
+-- Use for local testing / private game only. Do not use for cheating on public servers.
+
+local Players = game:GetService("Players")
+local RunService = game:GetService("RunService")
+local TweenService = game:GetService("TweenService")
+
+local player = Players.LocalPlayer
+local camera = workspace.CurrentCamera
+
+-- Wait for character
+local function getCharacter()
+    return player.Character or player.CharacterAdded:Wait()
+end
+
+-- Create ScreenGui
+local screenGui = Instance.new("ScreenGui")
+screenGui.Parent = player:WaitForChild("PlayerGui")
+screenGui.ZIndexBehavior = Enum.ZIndexBehavior.Sibling
+
+local function createButton(name, posY)
+    local btn = Instance.new("TextButton")
+    btn.Size = UDim2.new(0, 220, 0, 40)
+    btn.Position = UDim2.new(0, 10, 0, posY)
+    btn.Text = name .. ": OFF"
+    btn.TextScaled = true
+    btn.BackgroundColor3 = Color3.fromRGB(200, 40, 40)
+    btn.Parent = screenGui
+    return btn
+end
+
+-- Create UI buttons
+local btnAutoHit = createButton("Auto Hit", 10)
+local btnSpam = createButton("Spam Swing", 60)
+local btnAutoLook = createButton("Auto Look", 110)
+local btnSpeedVisual = createButton("Speed Visual", 160)
+local btnHighJumpVisual = createButton("HighJump Visual", 210)
+local btnSpawnSword = createButton("Spawn Sword", 260)
+
+-- State flags
+local state = {
+    autoHit = false,
+    spam = false,
+    autoLook = false,
+    speedVisual = false,
+    highJumpVisual = false,
+    swordSpawned = false,
+}
+
+-- Utility: toggle button visuals
+local function updateBtnVisual(btn, enabled)
+    btn.Text = string.gsub(btn.Text, "ON","OFF")
+    if enabled then
+        btn.Text = string.gsub(btn.Text, "OFF", "ON")
+        btn.BackgroundColor3 = Color3.fromRGB(40,200,40)
+    else
+        btn.BackgroundColor3 = Color3.fromRGB(200,40,40)
+        btn.Text = string.gsub(btn.Text, "ON", "OFF")
+    end
+end
+
+-- Toggle handlers
+btnAutoHit.MouseButton1Click:Connect(function()
+    state.autoHit = not state.autoHit
+    updateBtnVisual(btnAutoHit, state.autoHit)
+end)
+btnSpam.MouseButton1Click:Connect(function()
+    state.spam = not state.spam
+    updateBtnVisual(btnSpam, state.spam)
+end)
+btnAutoLook.MouseButton1Click:Connect(function()
+    state.autoLook = not state.autoLook
+    updateBtnVisual(btnAutoLook, state.autoLook)
+end)
+btnSpeedVisual.MouseButton1Click:Connect(function()
+    state.speedVisual = not state.speedVisual
+    updateBtnVisual(btnSpeedVisual, state.speedVisual)
+    if not state.speedVisual then
+        -- restore FOV if turned off
+        camera.FieldOfView = 70
+    end
+end)
+btnHighJumpVisual.MouseButton1Click:Connect(function()
+    state.highJumpVisual = not state.highJumpVisual
+    updateBtnVisual(btnHighJumpVisual, state.highJumpVisual)
+end)
+
+-- Local-only sword (client side)
+local localSword = nil
+local swordSound = nil
+local swordParticles = nil
+
+local function spawnLocalSword()
+    if localSword then return end
+    local char = getCharacter()
+    local rightHand = char:FindFirstChild("RightHand") or char:FindFirstChild("Right Arm") or char:FindFirstChild("Torso")
+    if not rightHand then return end
+
+    local blade = Instance.new("Part")
+    blade.Name = "LocalSword"
+    blade.Size = Vector3.new(0.2, 2, 0.6)
+    blade.CanCollide = false
+    blade.Anchored = false
+    blade.Parent = char
+    blade.Transparency = 0 -- visible to local player
+
+    local handleWeld = Instance.new("WeldConstraint")
+    handleWeld.Part0 = blade
+    handleWeld.Part1 = rightHand
+    handleWeld.Parent = blade
+
+    -- Optional: add mesh for nicer look
+    local mesh = Instance.new("SpecialMesh", blade)
+    mesh.MeshType = Enum.MeshType.FileMesh
+    -- mesh.MeshId = "rbxassetid://<your-mesh-id>" -- (optional)
+    mesh.Scale = Vector3.new(0.6, 1, 0.6)
+
+    -- Sound (local only)
+    swordSound = Instance.new("Sound", blade)
+    swordSound.SoundId = "rbxassetid://12222124" -- replace with your local sound asset id
+    swordSound.Volume = 1
+
+    -- Particles (local only)
+    swordParticles = Instance.new("ParticleEmitter", blade)
+    swordParticles.Rate = 0
+    swordParticles.Speed = NumberRange.new(2,4)
+    swordParticles.Lifetime = NumberRange.new(0.3, 0.6)
+    swordParticles.Size = NumberSequence.new({NumberSequenceKeypoint.new(0,0.6), NumberSequenceKeypoint.new(1,0)})
+
+    localSword = blade
+    state.swordSpawned = true
+    updateBtnVisual(btnSpawnSword, true)
+end
+
+local function removeLocalSword()
+    if localSword then
+        localSword:Destroy()
+        localSword = nil
+        swordSound = nil
+        swordParticles = nil
+    end
+    state.swordSpawned = false
+    updateBtnVisual(btnSpawnSword, false)
+end
+
+btnSpawnSword.MouseButton1Click:Connect(function()
+    if state.swordSpawned then
+        removeLocalSword()
+    else
+        spawnLocalSword()
+    end
+end)
+
+-- Helper: find nearest other player to camera
+local function findNearestPlayer()
+    local bestP, bestDist = nil, math.huge
+    local camPos = camera.CFrame.Position
+    for _, pl in pairs(Players:GetPlayers()) do
+        if pl ~= player and pl.Character and pl.Character:FindFirstChild("HumanoidRootPart") then
+            local pos = pl.Character.HumanoidRootPart.Position
+            local d = (pos - camPos).Magnitude
+            if d < bestDist then
+                bestDist = d
+                bestP = pl
+            end
+        end
+    end
+    return bestP, bestDist
+end
+
+-- Auto-look loop (client-side camera orientation)
+spawn(function()
+    while true do
+        if state.autoLook then
+            local target, dist = findNearestPlayer()
+            if target and target.Character and target.Character:FindFirstChild("HumanoidRootPart") then
+                local tpos = target.Character.HumanoidRootPart.Position + Vector3.new(0, 1.7, 0)
+                local camPos = camera.CFrame.Position
+                local newCFrame = CFrame.new(camPos, tpos)
+                camera.CFrame = newCFrame
+            end
+        end
+        wait(0.1)
+    end
+end)
+
+-- Auto hit (local visual only)
+local lastSwing = 0
+local swingCooldown = 0.4
+
+local function doLocalHit()
+    -- Play sword sound/particles and print a message
+    if swordSound then
+        swordSound:Play()
+    end
+    if swordParticles then
+        swordParticles:Emit(12)
+    end
+    -- local visual: briefly change camera or show hit indicator
+    print("[LOCAL] Hit executed at time:", tick())
+end
+
+-- Spam swing loop (when spam is ON)
+spawn(function()
+    while true do
+        if state.spam then
+            -- only local visual swing; respect cooldown to avoid runaway UI spam
+            doLocalHit()
+            wait(0.08) -- spam speed (visual only)
+        else
+            wait(0.2)
+        end
+    end
+end)
+
+-- Auto hit loop (when autoHit is ON: attempt to "hit" the part under mouse; local only)
+local UserInputService = game:GetService("UserInputService")
+local mouse = player:GetMouse()
+
+spawn(function()
+    while true do
+        if state.autoHit then
+            local target = mouse.Target
+            if target and target:IsA("BasePart") then
+                -- local-only: play local hit effects
+                doLocalHit()
+            end
+        end
+        wait(0.05)
+    end
+end)
+
+-- Speed visual: change camera FOV while enabled to create "speed" feeling (visual only)
+spawn(function()
+    while true do
+        if state.speedVisual then
+            -- Smoothly increase FOV
+            local goal = { FieldOfView = 90 }
+            local info = TweenInfo.new(0.2, Enum.EasingStyle.Quad)
+            TweenService:Create(camera, info, goal):Play()
+        else
+            -- Smoothly restore
+            local goal = { FieldOfView = 70 }
+            local info = TweenInfo.new(0.4, Enum.EasingStyle.Quad)
+            TweenService:Create(camera, info, goal):Play()
+        end
+        wait(0.25)
+    end
+end)
+
+-- High jump visual: when toggled, we will briefly tween the camera up when player presses space
+local jumpedRecently = false
+UserInputService.JumpRequest:Connect(function()
+    if state.highJumpVisual and not jumpedRecently then
+        jumpedRecently = true
+        -- camera bump up
+        local original = camera.CFrame
+        local upCFrame = original * CFrame.new(0, 6, 0)
+        local info = TweenInfo.new(0.25, Enum.EasingStyle.Quad, Enum.EasingDirection.Out)
+        TweenService:Create(camera, info, {CFrame = upCFrame}):Play()
+        delay(0.25, function()
+            local info2 = TweenInfo.new(0.4, Enum.EasingStyle.Quad, Enum.EasingDirection.In)
+            TweenService:Create(camera, info2, {CFrame = original}):Play()
+            jumpedRecently = false
+        end)
+    end
+end)
+
+-- Clean-up if character respawns
+player.CharacterAdded:Connect(function(char)
+    wait(0.5)
+    if state.swordSpawned then
+        removeLocalSword()
+        spawnLocalSword()
+    end
+end)
+
+-- End of script
