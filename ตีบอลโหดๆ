@@ -1,0 +1,31 @@
+local player = game.Players.LocalPlayer
+local tool = script.Parent  -- put script inside the bat tool
+local hitCooldown = 0.1     -- how fast you can hit (seconds)
+
+local canHit = true
+
+tool.Activated:Connect(function()
+	if not canHit then return end
+	canHit = false
+
+	-- Play swing animation
+	local char = player.Character
+	local humanoid = char:FindFirstChildOfClass("Humanoid")
+	if humanoid then
+		humanoid:LoadAnimation(tool:WaitForChild("SwingAnimation")):Play()
+	end
+
+	-- Detect and hit nearby balls
+	for _, obj in pairs(workspace:GetChildren()) do
+		if obj.Name == "Ball" and (obj.Position - char.HumanoidRootPart.Position).magnitude < 10 then
+			local bodyVelocity = Instance.new("BodyVelocity")
+			bodyVelocity.Velocity = (obj.Position - char.HumanoidRootPart.Position).unit * 200
+			bodyVelocity.MaxForce = Vector3.new(1e5, 1e5, 1e5)
+			bodyVelocity.Parent = obj
+			game:GetService("Debris"):AddItem(bodyVelocity, 0.2)
+		end
+	end
+
+	task.wait(hitCooldown)
+	canHit = true
+end)
