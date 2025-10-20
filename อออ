@@ -1,0 +1,261 @@
+-- LocalScript (put in StarterPlayerScripts)
+-- UwU-style, client-only helper for local testing. DOES NOT call FireServer or change server-side gameplay.
+-- Safe for private/local testing. Do NOT use to gain unfair advantage on public servers.
+
+local Players = game:GetService("Players")
+local RunService = game:GetService("RunService")
+local TweenService = game:GetService("TweenService")
+local UserInputService = game:GetService("UserInputService")
+
+local player = Players.LocalPlayer
+local camera = workspace.CurrentCamera
+
+-- ====== UI ======
+local screenGui = Instance.new("ScreenGui")
+screenGui.Name = "UwUHelperGui"
+screenGui.Parent = player:WaitForChild("PlayerGui")
+screenGui.ResetOnSpawn = false
+
+local function makeLabel(text, posY)
+	local lbl = Instance.new("TextLabel")
+	lbl.Size = UDim2.new(0, 220, 0, 28)
+	lbl.Position = UDim2.new(0, 10, 0, posY)
+	lbl.BackgroundTransparency = 1
+	lbl.Text = text
+	lbl.TextScaled = true
+	lbl.TextColor3 = Color3.fromRGB(255, 200, 230)
+	lbl.Font = Enum.Font.Gotham
+	lbl.Parent = screenGui
+	return lbl
+end
+
+local function makeButton(text, posY)
+	local btn = Instance.new("TextButton")
+	btn.Size = UDim2.new(0, 220, 0, 36)
+	btn.Position = UDim2.new(0, 10, 0, posY)
+	btn.BackgroundColor3 = Color3.fromRGB(255, 155, 200)
+	btnBorder = Instance.new("UICorner", btn)
+	btnBorder.CornerRadius = UDim.new(0, 10)
+	btn.Text = text .. " : OFF"
+	btn.TextScaled = true
+	btn.Font = Enum.Font.Gotham
+	btn.Parent = screenGui
+	return btn
+end
+
+local function makeTextbox(placeholder, posY)
+	local tb = Instance.new("TextBox")
+	tb.Size = UDim2.new(0, 220, 0, 30)
+	tb.Position = UDim2.new(0, 10, 0, posY)
+	tb.PlaceholderText = placeholder
+	tb.Text = ""
+	tb.TextScaled = true
+	tb.Font = Enum.Font.Gotham
+	tb.BackgroundColor3 = Color3.fromRGB(245, 225, 245)
+	local corner = Instance.new("UICorner", tb)
+	corner.CornerRadius = UDim.new(0,8)
+	tb.Parent = screenGui
+	return tb
+end
+
+-- Title UwU
+makeLabel("UwU Helper — Delta Edition ♡", 8)
+
+-- Buttons & textbox
+local btnAutoHit = makeButton("AutoHit UwU", 44)
+local btnSpam = makeButton("Spam UwU", 88)
+local btnAutoLook = makeButton("AutoLook UwU", 132)
+local nameBox = makeTextbox("target player name (type here) UwU", 176)
+local btnSpeedVisual = makeButton("SpeedVisual UwU", 216)
+
+-- Speed HUD (visual only)
+local speedLabel = Instance.new("TextLabel")
+speedLabel.Size = UDim2.new(0, 220, 0, 28)
+speedLabel.Position = UDim2.new(0, 10, 0, 260)
+speedLabel.BackgroundTransparency = 1
+speedLabel.Text = "Speed: Normal UwU"
+speedLabel.TextScaled = true
+speedLabel.Font = Enum.Font.GothamBold
+speedLabel.TextColor3 = Color3.fromRGB(255,255,255)
+speedLabel.Parent = screenGui
+
+-- ====== State ======
+local state = {
+	autoHit = false,
+	spam = false,
+	autoLook = false,
+	speedVisual = false,
+	targetName = "",
+}
+
+local function setBtnState(btn, on)
+	if on then
+		btn.Text = string.gsub(btn.Text, "OFF", "ON")
+		btn.BackgroundColor3 = Color3.fromRGB(150, 255, 200)
+	else
+		btn.Text = string.gsub(btn.Text, "ON", "OFF")
+		btn.BackgroundColor3 = Color3.fromRGB(255, 155, 200)
+	end
+end
+
+-- Button handlers
+btnAutoHit.MouseButton1Click:Connect(function()
+	state.autoHit = not state.autoHit
+	setBtnState(btnAutoHit, state.autoHit)
+end)
+btnSpam.MouseButton1Click:Connect(function()
+	state.spam = not state.spam
+	setBtnState(btnSpam, state.spam)
+end)
+btnAutoLook.MouseButton1Click:Connect(function()
+	state.autoLook = not state.autoLook
+	setBtnState(btnAutoLook, state.autoLook)
+end)
+btnSpeedVisual.MouseButton1Click:Connect(function()
+	state.speedVisual = not state.speedVisual
+	setBtnState(btnSpeedVisual, state.speedVisual)
+	if not state.speedVisual then
+		-- restore camera FOV
+		TweenService:Create(camera, TweenInfo.new(0.4), {FieldOfView = 70}):Play()
+		speedLabel.Text = "Speed: Normal UwU"
+	else
+		speedLabel.Text = "Speed: Visual UwU"
+	end
+end)
+
+nameBox.FocusLost:Connect(function(enterPressed)
+	state.targetName = nameBox.Text
+end)
+
+-- ====== Local-only swing / hit effects ======
+-- You can swap these asset ids with your own local sound / particle
+local SWING_SOUND_ID = "rbxassetid://12222030" -- placeholder
+local HIT_PARTICLE_SETTINGS = {
+	Rate = 100,
+	Speed = NumberRange.new(3,6),
+	Lifetime = NumberRange.new(0.2,0.5),
+	Size = NumberSequence.new({NumberSequenceKeypoint.new(0,0.6), NumberSequenceKeypoint.new(1,0)}),
+	Enabled = false
+}
+
+-- Create a local "hit effect" part parented to camera so only you see it easily
+local localEffectPart = Instance.new("Part")
+localEffectPart.Size = Vector3.new(0.2,0.2,0.2)
+localEffectPart.Anchored = true
+localEffectPart.CanCollide = false
+localEffectPart.Transparency = 1
+localEffectPart.Parent = workspace
+
+-- sound
+local swingSound = Instance.new("Sound", localEffectPart)
+swingSound.SoundId = SWING_SOUND_ID
+swingSound.Volume = 1
+
+-- particle
+local p = Instance.new("ParticleEmitter", localEffectPart)
+p.Rate = HIT_PARTICLE_SETTINGS.Rate
+p.Speed = HIT_PARTICLE_SETTINGS.Speed
+p.Lifetime = HIT_PARTICLE_SETTINGS.Lifetime
+p.Size = HIT_PARTICLE_SETTINGS.Size
+p.Enabled = false
+
+local function playLocalHit()
+	-- brief sound & particle burst
+	p:Emit(10)
+	swingSound:Play()
+	-- tiny camera punch
+	local orig = camera.CFrame
+	local punch = orig * CFrame.new(0, 0, -0.15)
+	TweenService:Create(camera, TweenInfo.new(0.06, Enum.EasingStyle.Quad), {CFrame = punch}):Play()
+	delay(0.06, function()
+		TweenService:Create(camera, TweenInfo.new(0.08, Enum.EasingStyle.Quad), {CFrame = orig}):Play()
+	end)
+end
+
+-- ====== AutoHit: hits when mouse is on a "ball" part (local only) ======
+-- Detection rule: part name contains "Ball" (adjust if your test asset differs)
+local mouse = player:GetMouse()
+spawn(function()
+	while true do
+		if state.autoHit then
+			local target = mouse.Target
+			if target and target:IsA("BasePart") and string.find(string.lower(target.Name), "ball") then
+				-- local-only hit visual
+				localEffectPart.CFrame = camera.CFrame * CFrame.new(0, 0, -2) -- in front of camera
+				playLocalHit()
+			end
+			wait(0.06) -- small throttle
+		else
+			wait(0.2)
+		end
+	end
+end)
+
+-- ====== Spam: repeatedly play local swing effects ======
+spawn(function()
+	while true do
+		if state.spam then
+			playLocalHit()
+			wait(0.08) -- spam interval (very fast visual spam)
+		else
+			wait(0.14)
+		end
+	end
+end)
+
+-- ====== AutoLook: camera faces named player (smooth) ======
+local function findPlayerByNamePart(namePart)
+	if not namePart or namePart == "" then return nil end
+	for _, pl in ipairs(Players:GetPlayers()) do
+		if pl ~= player and string.find(string.lower(pl.Name), string.lower(namePart)) then
+			if pl.Character and pl.Character:FindFirstChild("HumanoidRootPart") then
+				return pl
+			end
+		end
+	end
+	return nil
+end
+
+spawn(function()
+	local smoothing = 0.12
+	while true do
+		if state.autoLook and state.targetName and state.targetName ~= "" then
+			local targetPl = findPlayerByNamePart(state.targetName)
+			if targetPl and targetPl.Character and targetPl.Character:FindFirstChild("HumanoidRootPart") then
+				local targetPos = targetPl.Character.HumanoidRootPart.Position + Vector3.new(0, 1.6, 0)
+				local camPos = camera.CFrame.Position
+				local goalCFrame = CFrame.new(camPos, targetPos)
+				-- smooth interp
+				camera.CFrame = camera.CFrame:Lerp(goalCFrame, smoothing)
+			end
+		end
+		wait(0.06)
+	end
+end)
+
+-- ====== Speed visual: FOV tween + speed HUD pulse; visual only ======
+spawn(function()
+	while true do
+		if state.speedVisual then
+			-- widen FOV
+			TweenService:Create(camera, TweenInfo.new(0.2, Enum.EasingStyle.Quad), {FieldOfView = 100}):Play()
+			-- HUD pulse
+			speedLabel.Text = "Speed: UwU Fast!"
+		else
+			-- restore
+			TweenService:Create(camera, TweenInfo.new(0.3, Enum.EasingStyle.Quad), {FieldOfView = 70}):Play()
+			speedLabel.Text = "Speed: Normal UwU"
+		end
+		wait(0.25)
+	end
+end)
+
+-- ====== Small helpful hints ======
+-- When player respawns, keep GUI
+player.CharacterAdded:Connect(function()
+	wait(0.5)
+	-- reposition local effect
+	localEffectPart.Parent = workspace
+end)
+
+-- End of script UwU
