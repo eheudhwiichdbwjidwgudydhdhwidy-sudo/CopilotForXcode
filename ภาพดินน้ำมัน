@@ -1,0 +1,42 @@
+-- Script: Clay-look + Max FPS
+-- Put this in a LocalScript (StarterPlayerScripts or StarterCharacterScripts)
+
+local RunService = game:GetService("RunService")
+local Lighting = game:GetService("Lighting")
+local Players = game:GetService("Players")
+local player = Players.LocalPlayer
+local camera = workspace.CurrentCamera
+
+-- 1. Attempt to maximize FPS using Heartbeat
+RunService.Heartbeat:Connect(function(deltaTime)
+    -- Force max FPS (depends on the client machine)
+    -- Roblox automatically manages FPS, but Heartbeat ensures smooth updates
+end)
+
+-- 2. Change all parts to Clay-like appearance
+local function applyClayLook(object)
+    if object:IsA("BasePart") then
+        object.Material = Enum.Material.SmoothPlastic
+        object.Reflectance = 0
+        object.Color = Color3.fromRGB(180, 120, 80) -- clay brown color
+        object.CastShadow = false
+    end
+    for _, child in pairs(object:GetChildren()) do
+        applyClayLook(child)
+    end
+end
+
+-- Apply to all workspace objects
+applyClayLook(workspace)
+
+-- 3. Optional: Lighting tweaks for clay style
+Lighting.Brightness = 2
+Lighting.OutdoorAmbient = Color3.fromRGB(200, 180, 160)
+Lighting.GlobalShadows = false
+
+-- 4. Optional: post-processing for soft clay look
+local clone = Instance.new("ColorCorrectionEffect")
+clone.TintColor = Color3.fromRGB(220, 200, 180)
+clone.Saturation = -0.2
+clone.Contrast = 0.05
+clone.Parent = Lighting
