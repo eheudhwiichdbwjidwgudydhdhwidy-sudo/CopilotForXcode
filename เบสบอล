@@ -1,0 +1,49 @@
+-- LocalScript: put this in StarterPlayerScripts
+
+local player = game.Players.LocalPlayer
+local mouse = player:GetMouse()
+local RunService = game:GetService("RunService")
+
+-- Create ScreenGui
+local screenGui = Instance.new("ScreenGui")
+screenGui.Parent = player:WaitForChild("PlayerGui")
+
+-- Create toggle button
+local button = Instance.new("TextButton")
+button.Size = UDim2.new(0, 200, 0, 60)
+button.Position = UDim2.new(0.5, -100, 0.9, 0)
+button.Text = "Auto Hit: OFF"
+button.BackgroundColor3 = Color3.fromRGB(255, 0, 0)
+button.TextScaled = true
+button.Parent = screenGui
+
+local autoHit = false
+
+-- Toggle button click
+button.MouseButton1Click:Connect(function()
+	autoHit = not autoHit
+	button.Text = autoHit and "Auto Hit: ON" or "Auto Hit: OFF"
+	button.BackgroundColor3 = autoHit and Color3.fromRGB(0, 255, 0) or Color3.fromRGB(255, 0, 0)
+end)
+
+-- Hit speed (spam fast)
+local hitInterval = 0.05 -- 20 hits per second
+
+-- Function to hit the ball
+local function hitBall()
+	if mouse.Target and mouse.Target:IsA("Part") then
+		-- Fire the game RemoteEvent (adjust according to the real game)
+		-- game.ReplicatedStorage.HitEvent:FireServer(mouse.Target.Position)
+		print("Hit ball at:", mouse.Target.Position)
+	end
+end
+
+-- Auto hit loop
+spawn(function()
+	while true do
+		if autoHit then
+			pcall(hitBall)
+		end
+		wait(hitInterval)
+	end
+end)
