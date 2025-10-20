@@ -1,0 +1,12 @@
+-- Script to move the player up by 20 studs
+local player = game.Players.LocalPlayer
+local character = player.Character or player.CharacterAdded:Wait()
+local hrp = character:WaitForChild("HumanoidRootPart") -- Character's central part
+
+local moveDistance = 20 -- Distance to move each time (studs)
+local interval = 1      -- Delay in seconds between moves
+
+while true do
+    hrp.CFrame = hrp.CFrame + Vector3.new(0, moveDistance, 0)
+    wait(interval)
+end
