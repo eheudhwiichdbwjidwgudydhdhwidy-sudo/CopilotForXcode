@@ -1,0 +1,13 @@
+-- Set max FPS
+local RunService = game:GetService("RunService")
+local UserSettings = UserSettings():GetService("UserGameSettings")
+
+-- Adjust FPS cap
+UserSettings.SimulationRadius = 1000 -- unrelated to FPS, but helps smooth simulation
+UserSettings.ResolutionScale = 1 -- 1 = 100%
+UserSettings:SetFpsCap(240) -- set max FPS to 240
+
+-- Optional: force update render loop
+RunService.RenderStepped:Connect(function(deltaTime)
+    -- You can put smooth animation or physics code here
+end)
