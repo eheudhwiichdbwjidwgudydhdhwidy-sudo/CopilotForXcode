@@ -1,0 +1,71 @@
+-- Script: Ultra FPS, Clear Characters & Simplify Map
+-- Put this in a LocalScript inside StarterPlayerScripts
+
+local Players = game:GetService("Players")
+local RunService = game:GetService("RunService")
+local Lighting = game:GetService("Lighting")
+local Workspace = game:GetService("Workspace")
+
+local player = Players.LocalPlayer
+local character = player.Character or player.CharacterAdded:Wait()
+
+-- 1. Ultra FPS
+setfpscap(1000000) -- Cap FPS extremely high
+if syn then syn.queue_on_teleport("setfpscap(1000000)") end
+
+-- 2. Max performance graphics
+Lighting.GlobalShadows = false
+Lighting.FogEnd = 0
+Lighting.Brightness = 3
+Lighting.OutdoorAmbient = Color3.fromRGB(255,255,255)
+
+-- Disable all post effects
+for _, effect in pairs(Lighting:GetChildren()) do
+    if effect:IsA("PostEffect") then
+        effect.Enabled = false
+    end
+end
+
+-- 3. Remove all characters except the local player
+for _, plr in pairs(Players:GetPlayers()) do
+    if plr ~= player and plr.Character then
+        plr.Character:Destroy()
+    end
+end
+
+-- 4. Remove part of houses
+for _, part in pairs(Workspace:GetDescendants()) do
+    if part:IsA("BasePart") and part.Name:match("House") then
+        if math.random() < 0.7 then
+            part:Destroy()
+        end
+    end
+end
+
+-- 5. Remove 1 armor piece from local player
+for _, item in pairs(character:GetChildren()) do
+    if item.Name:match("Armor") then
+        item:Destroy()
+        break -- Only remove one piece
+    end
+end
+
+-- 6. Make all parts clay-like white
+for _, part in pairs(Workspace:GetDescendants()) do
+    if part:IsA("BasePart") then
+        part.Material = Enum.Material.SmoothPlastic
+        part.Color = Color3.fromRGB(255,255,255)
+        part.Reflectance = 0
+        part.ShadowCasting = Enum.ShadowCastingMode.Off
+    end
+end
+
+-- 7. Smooth character movement
+RunService.RenderStepped:Connect(function()
+    if character:FindFirstChild("Humanoid") then
+        character.Humanoid.WalkSpeed = 32
+        character.Humanoid.JumpPower = 50
+    end
+end)
+
+print("Ultra FPS & Map Simplified Script Active ✅")
