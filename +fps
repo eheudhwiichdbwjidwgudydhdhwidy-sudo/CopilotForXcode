@@ -1,0 +1,31 @@
+--// FPS Boost Script (Delta Supported)
+--// Made for performance boost by lowering graphics settings
+
+for _, v in pairs(workspace:GetDescendants()) do
+    if v:IsA("ParticleEmitter") or v:IsA("Trail") or v:IsA("Smoke") or v:IsA("Fire") then
+        v.Enabled = false
+    elseif v:IsA("Decal") or v:IsA("Texture") then
+        v.Transparency = 1
+    elseif v:IsA("PointLight") or v:IsA("SpotLight") or v:IsA("SurfaceLight") then
+        v.Enabled = false
+    end
+end
+
+--// Remove shadows and reduce render quality
+settings().Rendering.QualityLevel = Enum.QualityLevel.Level01
+game.Lighting.GlobalShadows = false
+game.Lighting.FogEnd = 9e9
+game.Lighting.Brightness = 1
+
+--// Remove post effects
+for _, v in pairs(game.Lighting:GetChildren()) do
+    if v:IsA("BlurEffect") or v:IsA("SunRaysEffect") or v:IsA("BloomEffect") or v:IsA("ColorCorrectionEffect") then
+        v.Enabled = false
+    end
+end
+
+--// Lower terrain decoration
+workspace.Terrain.WaterWaveSize = 0
+workspace.Terrain.WaterWaveSpeed = 0
+workspace.Terrain.WaterReflectance = 0
+workspace.Terrain.WaterTransparency = 1
