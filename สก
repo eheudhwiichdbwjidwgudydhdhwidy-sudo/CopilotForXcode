@@ -1,0 +1,265 @@
+-- StylishAdminUI.lua (LocalScript)
+-- วางใน StarterPlayer > StarterPlayerScripts
+-- สร้าง UI แบบ overlay สำหรับการทดสอบ/พัฒนาเท่านั้น (ไม่มีฟังก์ชันแฮ็ก)
+
+local Players = game:GetService("Players")
+local TweenService = game:GetService("TweenService")
+local player = Players.LocalPlayer
+local playerGui = player:WaitForChild("PlayerGui")
+
+-- ถ้ามี UI เดิมให้ลบก่อน
+local existing = playerGui:FindFirstChild("StylishAdminUI")
+if existing then existing:Destroy() end
+
+local screen = Instance.new("ScreenGui")
+screen.Name = "StylishAdminUI"
+screen.ResetOnSpawn = false
+screen.Parent = playerGui
+
+-- Utility
+local function round(n) return math.floor(n+0.5) end
+local function create(class, props)
+    local inst = Instance.new(class)
+    for k,v in pairs(props or {}) do inst[k] = v end
+    return inst
+end
+
+-- Main container (draggable)
+local main = create("Frame", {
+    Name = "MainWindow",
+    Parent = screen,
+    Size = UDim2.new(0, 820, 0, 420),
+    Position = UDim2.new(0.12, 0, 0.2, 0),
+    BackgroundColor3 = Color3.fromRGB(22,22,24),
+    BorderSizePixel = 0,
+    ClipsDescendants = true,
+})
+local mainUICorner = create("UICorner", {Parent = main, CornerRadius = UDim.new(0,10)})
+local mainStroke = create("UIStroke", {Parent = main, Color = Color3.fromRGB(60,60,65), Thickness = 1})
+
+-- Dark translucent backdrop inside to mimic blurred panel
+local inner = create("Frame", {
+    Parent = main,
+    Size = UDim2.new(1, -20, 1, -20),
+    Position = UDim2.new(0, 10, 0, 10),
+    BackgroundColor3 = Color3.fromRGB(12,12,14),
+    BorderSizePixel = 0,
+    BackgroundTransparency = 0.05,
+})
+create("UICorner", {Parent = inner, CornerRadius = UDim.new(0,8)})
+
+-- Left sidebar (categories)
+local sidebar = create("Frame", {
+    Parent = inner,
+    Size = UDim2.new(0, 160, 1, 0),
+    Position = UDim2.new(0, 8, 0, 8),
+    BackgroundTransparency = 1,
+})
+create("UIListLayout", {Parent = sidebar, Padding = UDim.new(0,8), SortOrder = Enum.SortOrder.LayoutOrder})
+
+local categories = {"Autoparry","Spam","Player","Visuals","World","Misc","Exclusive"}
+local catButtons = {}
+
+for i, name in ipairs(categories) do
+    local btn = create("TextButton", {
+        Parent = sidebar,
+        Size = UDim2.new(1, 0, 0, 46),
+        BackgroundColor3 = Color3.fromRGB(36,36,40),
+        Text = name,
+        TextColor3 = Color3.fromRGB(230,230,230),
+        Font = Enum.Font.GothamSemibold,
+        TextSize = 15,
+        AutoButtonColor = false,
+        Name = "Cat_"..name,
+    })
+    create("UICorner", {Parent = btn, CornerRadius = UDim.new(0,8)})
+    catButtons[name] = btn
+end
+
+-- Center content area (cards/panels)
+local content = create("Frame", {
+    Parent = inner,
+    Size = UDim2.new(1, -200, 1, -16),
+    Position = UDim2.new(0, 176, 0, 8),
+    BackgroundTransparency = 1,
+})
+-- Content grid
+local contentGrid = create("Frame", {
+    Parent = content,
+    Size = UDim2.new(1, -16, 1, -16),
+    Position = UDim2.new(0, 8, 0, 8),
+    BackgroundTransparency = 1,
+})
+create("UIGridLayout", {Parent = contentGrid, CellSize = UDim2.new(0, 360, 0, 180), CellPadding = UDim2.new(0, 12, 0, 12)})
+
+-- Function to create a card
+local function createCard(title)
+    local card = create("Frame", {
+        Parent = contentGrid,
+        BackgroundColor3 = Color3.fromRGB(18,18,20),
+        Size = UDim2.new(0, 360, 0, 180),
+        BorderSizePixel = 0,
+    })
+    create("UICorner", {Parent = card, CornerRadius = UDim.new(0,10)})
+    local label = create("TextLabel", {
+        Parent = card,
+        Size = UDim2.new(1, -20, 0, 28),
+        Position = UDim2.new(0, 10, 0, 10),
+        BackgroundTransparency = 1,
+        Text = title,
+        TextColor3 = Color3.fromRGB(230,230,230),
+        Font = Enum.Font.GothamBold,
+        TextSize = 16,
+        TextXAlignment = Enum.TextXAlignment.Left,
+    })
+    return card
+end
+
+-- create sample cards for "Autoparry" and "Spam"
+local card1 = createCard("Auto Parry")
+local card2 = createCard("Spam")
+
+-- Inside card: toggle row helper
+local function makeToggle(parent, labelText)
+    local row = create("Frame", {Parent = parent, Size = UDim2.new(1, -24, 0, 36), Position = UDim2.new(0, 12, 0, 44), BackgroundTransparency = 1})
+    local lbl = create("TextLabel", {Parent = row, Size = UDim2.new(0.6, 0, 1, 0), BackgroundTransparency = 1, Text = labelText, TextColor3 = Color3.fromRGB(220,220,220), Font = Enum.Font.Gotham, TextSize = 14, TextXAlignment = Enum.TextXAlignment.Left})
+    local tog = create("TextButton", {Parent = row, Size = UDim2.new(0, 80, 0, 26), Position = UDim2.new(1, -80, 0.5, -13), BackgroundColor3 = Color3.fromRGB(70,70,76), Text = "OFF", TextColor3 = Color3.fromRGB(240,240,240), Font = Enum.Font.GothamBold, TextSize = 13})
+    create("UICorner", {Parent = tog, CornerRadius = UDim.new(0,6)})
+    local state = false
+    tog.Activated:Connect(function()
+        state = not state
+        tog.Text = state and "ON" or "OFF"
+        tog.BackgroundColor3 = state and Color3.fromRGB(60,140,70) or Color3.fromRGB(70,70,76)
+        -- callback placeholder
+        print(labelText.." toggled:", state)
+    end)
+    return row, function() return state end
+end
+
+-- Example: add toggles/sliders/dropdowns to cards
+do
+    -- Card1: Auto Parry options
+    local r1 = makeToggle(card1, "Enable AutoParry")
+    local r2 = makeToggle(card1, "Notify")
+    -- parry accuracy slider
+    local sliderLabel = create("TextLabel", {Parent = card1, Size = UDim2.new(0.4,0,0,20), Position = UDim2.new(0,12,0,92), BackgroundTransparency = 1, Text = "Parry Accuracy", TextColor3 = Color3.fromRGB(210,210,210), Font = Enum.Font.Gotham, TextSize = 13, TextXAlignment = Enum.TextXAlignment.Left})
+    local sliderFrame = create("Frame", {Parent = card1, Size = UDim2.new(0.6, -20, 0, 18), Position = UDim2.new(0, 140, 0, 92), BackgroundColor3 = Color3.fromRGB(40,40,42)})
+    create("UICorner", {Parent = sliderFrame, CornerRadius = UDim.new(0,6)})
+    local sliderFill = create("Frame", {Parent = sliderFrame, Size = UDim2.new(0.3,0,1,0), BackgroundColor3 = Color3.fromRGB(80,160,255)})
+    create("UICorner", {Parent = sliderFill, CornerRadius = UDim.new(0,6)})
+    local dragging = false
+    sliderFrame.InputBegan:Connect(function(input)
+        if input.UserInputType == Enum.UserInputType.MouseButton1 then
+            dragging = true
+        end
+    end)
+    sliderFrame.InputEnded:Connect(function(input) if input.UserInputType == Enum.UserInputType.MouseButton1 then dragging = false end end)
+    game:GetService("UserInputService").InputChanged:Connect(function(input)
+        if dragging and input.UserInputType == Enum.UserInputType.MouseMovement then
+            local rel = math.clamp((input.Position.X - sliderFrame.AbsolutePosition.X) / sliderFrame.AbsoluteSize.X, 0, 1)
+            sliderFill.Size = UDim2.new(rel,0,1,0)
+            local accuracy = round(rel * 100)
+            -- placeholder callback
+            -- print("Parry accuracy:", accuracy)
+        end
+    end)
+end
+
+do
+    -- Card2: Spam options (example only, no spam logic)
+    local t1 = makeToggle(card2, "Enable ManualSpam")
+    local t2 = makeToggle(card2, "Notify")
+    -- dropdown mock
+    local ddLabel = create("TextLabel", {Parent = card2, Size = UDim2.new(0.5,0,0,20), Position = UDim2.new(0,12,0,92), BackgroundTransparency = 1, Text = "Mode", TextColor3 = Color3.fromRGB(210,210,210), Font = Enum.Font.Gotham, TextSize = 13, TextXAlignment = Enum.TextXAlignment.Left})
+    local ddBtn = create("TextButton", {Parent = card2, Size = UDim2.new(0,140,0,28), Position = UDim2.new(0, 120, 0, 86), BackgroundColor3 = Color3.fromRGB(44,44,48), Text = "None", Font = Enum.Font.Gotham, TextColor3 = Color3.fromRGB(240,240,240), TextSize = 13})
+    create("UICorner", {Parent = ddBtn, CornerRadius = UDim.new(0,6)})
+    local options = {"None","Remote","Keypress","AnimationFix"}
+    local dropdownOpen = false
+    local dropdownFrame
+    ddBtn.Activated:Connect(function()
+        dropdownOpen = not dropdownOpen
+        if dropdownOpen then
+            dropdownFrame = create("Frame", {Parent = card2, Size = UDim2.new(0,140,0,#options*28), Position = UDim2.new(0, 120, 0, 120), BackgroundColor3 = Color3.fromRGB(36,36,40)})
+            create("UICorner", {Parent = dropdownFrame, CornerRadius = UDim.new(0,6)})
+            for i,opt in ipairs(options) do
+                local b = create("TextButton", {Parent = dropdownFrame, Size = UDim2.new(1,0,0,28), Position = UDim2.new(0,0,0,(i-1)*28), BackgroundTransparency = 1, Text = opt, TextColor3 = Color3.fromRGB(230,230,230), Font = Enum.Font.Gotham, TextSize = 13})
+                b.Activated:Connect(function()
+                    ddBtn.Text = opt
+                    dropdownFrame:Destroy()
+                    dropdownOpen = false
+                    print("Spam mode selected:", opt)
+                end)
+            end
+        else
+            if dropdownFrame and dropdownFrame.Parent then dropdownFrame:Destroy() end
+        end
+    end)
+end
+
+-- Right floating button (open/close)
+local floatBtn = create("TextButton", {
+    Parent = screen,
+    Name = "FloatToggle",
+    Size = UDim2.new(0, 120, 0, 44),
+    Position = UDim2.new(0.85, 0, 0.36, 0),
+    Text = "Spam",
+    Font = Enum.Font.GothamBold,
+    TextSize = 16,
+    TextColor3 = Color3.fromRGB(250,250,250),
+    BackgroundColor3 = Color3.fromRGB(40,40,46),
+})
+create("UICorner", {Parent = floatBtn, CornerRadius = UDim.new(0,10)})
+floatBtn.Activated:Connect(function()
+    local open = main.Visible
+    main.Visible = not open
+end)
+
+-- Initially visible
+main.Visible = true
+
+-- Draggable main window (simple implementation)
+do
+    local dragging = false
+    local dragInput, dragStart, startPos
+    local header = create("Frame", {Parent = main, Size = UDim2.new(1,0,0,36), BackgroundTransparency = 1})
+    local title = create("TextLabel", {Parent = header, Size = UDim2.new(1, -20, 1, 0), Position = UDim2.new(0, 10, 0, 0), BackgroundTransparency = 1, Text = "UwU.dll - Free", TextColor3 = Color3.fromRGB(230,230,230), Font = Enum.Font.GothamBold, TextSize = 16, TextXAlignment = Enum.TextXAlignment.Left})
+    header.InputBegan:Connect(function(input)
+        if input.UserInputType == Enum.UserInputType.MouseButton1 then
+            dragging = true
+            dragStart = input.Position
+            startPos = main.Position
+            input.Changed:Connect(function()
+                if input.UserInputState == Enum.UserInputState.End then
+                    dragging = false
+                end
+            end)
+        end
+    end)
+    header.InputChanged:Connect(function(input)
+        if input.UserInputType == Enum.UserInputType.MouseMovement then
+            dragInput = input
+        end
+    end)
+    game:GetService("UserInputService").InputChanged:Connect(function(input)
+        if input == dragInput and dragging then
+            local delta = input.Position - dragStart
+            local newPos = UDim2.new(startPos.X.Scale, startPos.X.Offset + delta.X, startPos.Y.Scale, startPos.Y.Offset + delta.Y)
+            main.Position = newPos
+        end
+    end)
+end
+
+-- Category switching (simple)
+for name, btn in pairs(catButtons) do
+    btn.Activated:Connect(function()
+        -- visual feedback
+        for _,other in pairs(catButtons) do
+            other.BackgroundColor3 = Color3.fromRGB(36,36,40)
+        end
+        btn.BackgroundColor3 = Color3.fromRGB(70,70,76)
+        print("Category selected:", name)
+        -- In real use: change contentGrid items based on name
+    end)
+end
+
+print("StylishAdminUI loaded")
